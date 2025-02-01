@@ -807,70 +807,60 @@ io.on("connection", (socket) => {
   // ========== YENİ: Text Message Event ==========
   socket.on('textMessage', async ({ channelId, content }) => {
     try {
-      const user = users[socket.id];
-      const now = Date.now();
-      const window = 1000 * 10; // 10 saniye
-      const maxMessages = 5;
-
-      if (messageRateLimits.has(socket.id)) {
-        const userLimits = messageRateLimits.get(socket.id);
-        if (userLimits.count >= maxMessages && now - userLimits.start < window) {
-          socket.emit('errorMessage', 'Çok fazla mesaj gönderiyorsunuz. Lütfen bekleyin.');
-          return;
-        }
-        if (now - userLimits.start > window) {
-          messageRateLimits.set(socket.id, { count: 1, start: now });
-        } else {
-          userLimits.count++;
-        }
-      } else {
-        messageRateLimits.set(socket.id, { count: 1, start: now });
-      }
-
-      const userData = users[socket.id];
-      if (!userData || !userData.username) {
-        socket.emit('errorMessage', "Kullanıcı adınız yok, mesaj gönderilemez!");
+      const channel = await Channel.findOne({ channelId }).populate('group');
+      if (!channel || channel.type !== 'text') {
+        socket.emit('errorMessage', 'Sadece metin kanallarında mesaj gönderebilirsiniz!');
         return;
       }
       
-      // Kanalı DB'den bul
-      const chDoc = await Channel.findOne({ channelId }).populate('group');
-      if (!chDoc) {
-        socket.emit('errorMessage', "Kanal bulunamadı!");
-        return;
-      }
-
-      // Grup ID
-      const groupId = chDoc.group.groupId;
-      // Bellekte bu kanal var mı
-      if (!groups[groupId] || !groups[groupId].rooms[channelId]) {
-        socket.emit('errorMessage', "Bu kanala erişiminiz yok!");
-        return;
-      }
-      // Sadece metin kanallarında mesaj işle
-      if (chDoc.type !== 'text') {
-        socket.emit('errorMessage', "Sadece metin kanallarında mesaj gönderebilirsiniz!");
-        return;
-      }
-      // Mesajı DB'ye kaydet
-      const userDoc = await User.findOne({ username: userData.username });
-      const newMsg = new Message({
-        channel: chDoc._id,
-        user: userDoc._id,
+      // Kullanıcı adını socket üzerinden al
+      const username = socket.username || 'Anonim';
+      
+      const newMessage = new Message({
+        channel: channel._id,
+        user: username,
         content
       });
-      await newMsg.save();
+      
+      await newMessage.save();
 
-      // Mesajı kanala yay
-      io.to(`${groupId}::${channelId}`).emit('textMessage', {
+      io.to(channelId).emit('textMessage', {
         channelId,
         content,
-        username: userData.username,
-        timestamp: newMsg.timestamp
+        username, // Kaydedilen kullanıcı adını gönder
+        timestamp: newMessage.timestamp
       });
+
     } catch (err) {
-      console.error("textMessage hata:", err);
-      socket.emit('errorMessage', "İşlem sırasında bir hata oluştu");
+      console.error('Mesaj işleme hatası:', err);
+      socket.emit('errorMessage', 'Mesaj gönderilemedi: ' + err.message);
+    }
+  });
+
+  // Kanal geçmişi gönderirken tarih filtresi ekleme
+  socket.on('getChannelHistory', async (channelId) => {
+    try {
+      const channel = await Channel.findOne({ channelId });
+      if (!channel) {
+        return socket.emit('errorMessage', 'Kanal bulunamadı');
+      }
+      
+      const messages = await Message.find({ channel: channel._id })
+        .sort({ timestamp: -1 })
+        .limit(100)
+        .lean(); // Daha hızlı işlem için
+
+      socket.emit('channelHistory', {
+        channelId,
+        messages: messages.map(m => ({
+          ...m,
+          timestamp: new Date(m.timestamp).getTime() // Tarih formatını düzelt
+        }))
+      });
+
+    } catch (err) {
+      console.error('Geçmiş yükleme hatası:', err);
+      socket.emit('errorMessage', 'Geçmiş yüklenemedi');
     }
   });
 

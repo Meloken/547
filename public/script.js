@@ -115,7 +115,7 @@ const micToggleButton = document.getElementById('micToggleButton');
 const deafenToggleButton = document.getElementById('deafenToggleButton');
 const settingsButton = document.getElementById('settingsButton');
 
-/* YENİ: Sohbet paneli elemanları */
+// YENİ: Sohbet paneli elemanları
 const textChatArea = document.getElementById('textChatArea');
 const chatMessagesDiv = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
@@ -292,7 +292,7 @@ document.getElementById('closeJoinGroupModal').addEventListener('click', () => {
 });
 document.getElementById('modalCreateRoomBtn').addEventListener('click', () => {
   const rName = document.getElementById('modalRoomName').value.trim();
-  const channelType = document.getElementById('modalRoomTypeSelect').value;  // 'text','voice','both'
+  const channelType = document.getElementById('modalRoomTypeSelect').value;
   if (!rName) {
     alert("Oda adı girin!");
     return;
@@ -324,7 +324,6 @@ socket.on('groupsList', (groupArray) => {
 
       selectedGroup = groupObj.id;
 
-      // === DÜZELTME: Yalnızca farklı gruba tıklanırsa currentGroup'ı sıfırla
       if (currentGroup !== groupObj.id) {
         currentGroup = null;
       }
@@ -465,19 +464,16 @@ document.addEventListener('click', () => {
   ==================================
 */
 socket.on('roomsList', (roomsArray) => {
-  // 1) Kanalları tiplerine göre ayır (text / voice / both)
   const textChannels = [];
   const voiceChannels = [];
 
   roomsArray.forEach(room => {
     if (room.type === 'text') textChannels.push(room);
-    else voiceChannels.push(room); // 'both' kontrolü kaldırıldı
+    else voiceChannels.push(room);
   });
 
-  // 2) Paneli temizle
   roomListDiv.innerHTML = '';
 
-  // 3) Metin Kanalları (text)
   if (textChannels.length > 0) {
     const textHeader = document.createElement('div');
     textHeader.style.margin = '0.5rem 0 0.3rem 0';
@@ -491,7 +487,6 @@ socket.on('roomsList', (roomsArray) => {
     });
   }
 
-  // 4) Ses Kanalları (voice)
   if (voiceChannels.length > 0) {
     const voiceHeader = document.createElement('div');
     voiceHeader.style.margin = '0.5rem 0 0.3rem 0';
@@ -506,15 +501,11 @@ socket.on('roomsList', (roomsArray) => {
   }
 });
 
-/* 
-  Yardımcı fonksiyon: Kanal Item oluşturup ekrana basar
-  (roomsList eventinde kullanıyoruz)
-*/
+/* Yardımcı fonksiyon: Kanal Item oluşturup ekrana basar */
 function createChannelItem(roomObj) {
   const roomItem = document.createElement('div');
   roomItem.className = 'channel-item';
 
-  // Kanal Başlığı
   const channelHeader = document.createElement('div');
   channelHeader.className = 'channel-header';
   const icon = roomObj.type === 'text' ? 
@@ -532,7 +523,6 @@ function createChannelItem(roomObj) {
   channelHeader.appendChild(icon);
   channelHeader.appendChild(textSpan);
 
-  // Kullanıcı listesi
   const channelUsers = document.createElement('div');
   channelUsers.className = 'channel-users';
   channelUsers.id = `channel-users-${roomObj.id}`;
@@ -540,7 +530,6 @@ function createChannelItem(roomObj) {
   roomItem.appendChild(channelHeader);
   roomItem.appendChild(channelUsers);
 
-  // Tıklayınca => Kanala gir
   roomItem.addEventListener('click', () => {
     document.querySelectorAll('.channel-item').forEach(ci => ci.classList.remove('connected'));
 
@@ -560,19 +549,15 @@ function createChannelItem(roomObj) {
 
     roomItem.classList.add('connected');
 
-    // Kanal tipine göre mikrofonu yönet
     if (roomObj.type === 'voice') {
-      // Ses kanalına özel davranış
       enableVoiceFeatures();
       disableChatUI();
     } else {
-      // Metin kanalına özel davranış
       enableChatUI();
       disableVoiceFeatures();
     }
   });
 
-  // Sağ tık => context menu
   roomItem.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     rightClickedChannelId = roomObj.id;
@@ -593,7 +578,6 @@ socket.on('allChannelsData', (channelsObj) => {
     channelDiv.innerHTML = '';
 
     cData.users.forEach(u => {
-      // user row
       const userRow = document.createElement('div');
       userRow.classList.add('channel-user');
 
@@ -614,7 +598,6 @@ socket.on('allChannelsData', (channelsObj) => {
       buttonsDiv.classList.add('channel-user-buttons');
 
       if (u.id === socket.id) {
-        // Mic kapalıysa icon
         if (!u.micEnabled) {
           const micIcon = document.createElement('span');
           micIcon.classList.add('material-icons');
@@ -623,7 +606,6 @@ socket.on('allChannelsData', (channelsObj) => {
           micIcon.textContent = 'mic_off';
           buttonsDiv.appendChild(micIcon);
         }
-        // Deaf
         if (u.selfDeafened) {
           const deafIcon = document.createElement('span');
           deafIcon.classList.add('material-icons');
@@ -721,12 +703,9 @@ function createUserItem(username, isOnline) {
 /* Mikrofon Erişimi */
 async function requestMicrophoneAccess() {
   try {
-    // Önceki stream'i temizle
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
     }
-
-    // Yeni stream al
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -735,20 +714,14 @@ async function requestMicrophoneAccess() {
         latency: 0.01
       }
     });
-
-    // Stream aktiflik kontrolü
     if (!localStream.active) {
       throw new Error('Mikrofon bağlantısı aktifleştirilemedi');
     }
-
-    // Track'leri kontrol et
     const audioTracks = localStream.getAudioTracks();
     if (audioTracks.length === 0) {
       throw new Error('Mikrofon erişimi sağlanamadı');
     }
-
     return true;
-
   } catch (err) {
     console.error('Mikrofon hatası:', err);
     micEnabled = false;
@@ -789,41 +762,19 @@ function initPeer(userId, isInitiator) {
   if (peers[userId] && peers[userId].connectionState !== 'closed') {
     return peers[userId];
   }
-
   console.log("initPeer =>", userId, "isInitiator?", isInitiator);
-
   const peer = new RTCPeerConnection({
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
-      {
-        urls: "stun:stun.relay.metered.ca:80",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80",
-        username: "6975c20c80cb0d79f1e4a4b6",
-        credential: "BCHrcOSfdcmZ/Dda",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: "6975c20c80cb0d79f1e4a4b6",
-        credential: "BCHrcOSfdcmZ/Dda",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
-        username: "6975c20c80cb0d79f1e4a4b6",
-        credential: "BCHrcOSfdcmZ/Dda",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: "6975c20c80cb0d79f1e4a4b6",
-        credential: "BCHrcOSfdcmZ/Dda",
-      },
+      { urls: "stun:stun.relay.metered.ca:80" },
+      { urls: "turn:global.relay.metered.ca:80", username: "6975c20c80cb0d79f1e4a4b6", credential: "BCHrcOSfdcmZ/Dda" },
+      { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "6975c20c80cb0d79f1e4a4b6", credential: "BCHrcOSfdcmZ/Dda" },
+      { urls: "turn:global.relay.metered.ca:443", username: "6975c20c80cb0d79f1e4a4b6", credential: "BCHrcOSfdcmZ/Dda" },
+      { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "6975c20c80cb0d79f1e4a4b6", credential: "BCHrcOSfdcmZ/Dda" },
     ],
   });
   peers[userId] = peer;
-
   localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
-
   peer.onicecandidate = (ev) => {
     if (ev.candidate) {
       socket.emit("signal", { to: userId, signal: ev.candidate });
@@ -836,9 +787,7 @@ function initPeer(userId, isInitiator) {
     audio.muted = false;
     audio.dataset.peerId = userId;
     remoteAudios.push(audio);
-
     startVolumeAnalysis(event.streams[0], userId);
-
     if (audioPermissionGranted) {
       audio.play().catch(err => console.error("Ses oynatılamadı:", err));
     }
@@ -846,9 +795,7 @@ function initPeer(userId, isInitiator) {
   peer.onconnectionstatechange = () => {
     console.log("Peer", userId, "state:", peer.connectionState);
   };
-
   if (isInitiator) createOffer(peer, userId);
-
   return peer;
 }
 
@@ -877,7 +824,6 @@ function initPeersForAllUsersInRoom() {
   });
 }
 
-// Bekleyen ICE Candidate'leri işle
 function processPendingCandidates() {
   for (const userId in pendingCandidates) {
     if (peers[userId]) {
@@ -893,10 +839,8 @@ function processPendingCandidates() {
   pendingCandidates = {};
 }
 
-// Signal alma işlemi
 socket.on("signal", async ({ from, signal }) => {
   if (!peers[from]) {
-    // Peer henüz yoksa oluştur ve pendingCandidates'e ekle
     const user = pendingUsers.find(u => u.id === from);
     if (user) {
       createPeerConnection(from, user.username);
@@ -906,7 +850,6 @@ socket.on("signal", async ({ from, signal }) => {
       pendingCandidates[from].push(signal);
     }
   } else {
-    // Peer varsa direkt işle
     try {
       await peers[from].addIceCandidate(new RTCIceCandidate(signal));
     } catch (err) {
@@ -928,10 +871,7 @@ socket.on('joinRoomAck', ({ groupId, roomId }) => {
 
 socket.on('roomUsers', (usersInRoom) => {
   console.log("roomUsers => odadaki kisiler:", usersInRoom);
-
   const newSet = new Set(usersInRoom.map(u => u.id));
-
-  // Kapatılması gereken peers
   for (const pid of Object.keys(peers)) {
     if (!newSet.has(pid)) {
       if (peers[pid]) {
@@ -939,7 +879,6 @@ socket.on('roomUsers', (usersInRoom) => {
       }
       delete peers[pid];
       stopVolumeAnalysis(pid);
-
       remoteAudios = remoteAudios.filter(audioEl => {
         if (audioEl.dataset && audioEl.dataset.peerId === pid) {
           try { audioEl.pause(); } catch (e) {}
@@ -950,8 +889,6 @@ socket.on('roomUsers', (usersInRoom) => {
       });
     }
   }
-
-  // Yeni user geldiyse => initPeerWithCheck
   if (currentRoom) {
     usersInRoom.forEach(u => {
       if (u.id !== socket.id) {
@@ -967,35 +904,27 @@ socket.on('roomUsers', (usersInRoom) => {
       }
     });
   }
-
   lastUserIdsInRoom = newSet;
-
-  // Kartları göster
   renderUsersInMainContent(usersInRoom);
 });
 
-/* Kanaldan Ayrıl */
 leaveButton.addEventListener('click', () => {
   if (!currentRoom) return;
   socket.emit('leaveRoom', { groupId: currentGroup, roomId: currentRoom });
   closeAllPeers();
   hideChannelStatusPanel();
   currentRoom = null;
-
   document.getElementById('selectedChannelTitle').textContent = 'Kanal Seçilmedi';
-
   const container = document.getElementById('channelUsersContainer');
   if (container) {
     container.innerHTML = '';
     container.classList.remove('layout-1-user','layout-2-users','layout-3-users','layout-4-users','layout-n-users');
   }
-
   if (currentGroup) {
     socket.emit('browseGroup', currentGroup);
   }
 });
 
-/* Mikrofon & Kulaklık => sunucuya audioStateChanged */
 micToggleButton.addEventListener('click', () => {
   micEnabled = !micEnabled;
   applyAudioStates();
@@ -1014,18 +943,13 @@ deafenToggleButton.addEventListener('click', () => {
 
 function applyAudioStates() {
   const isVoiceChannel = getRoomType(currentRoom) === 'voice';
-  
-  // Mikrofon kontrollerini sadece ses kanallarında göster ve aktif et
   micToggleButton.style.display = isVoiceChannel ? 'block' : 'none';
   micToggleButton.disabled = !isVoiceChannel;
-
   if (localStream) {
-    // Ses kanalı değilse mikrofonu zorla kapat
     localStream.getAudioTracks().forEach(track => {
       track.enabled = isVoiceChannel && micEnabled && !selfDeafened;
     });
   }
-  
   if (!micEnabled || selfDeafened) {
     micToggleButton.innerHTML = '<span class="material-icons">mic_off</span>';
     micToggleButton.classList.add('btn-muted');
@@ -1056,7 +980,6 @@ function parseIceUfrag(sdp) {
   return null;
 }
 
-/* groupRenamed => UI update => */
 socket.on('groupRenamed', (data) => {
   const { groupId, newName } = data;
   if (currentGroup === groupId || selectedGroup === groupId) {
@@ -1065,7 +988,6 @@ socket.on('groupRenamed', (data) => {
   socket.emit('set-username', username);
 });
 
-/* groupDeleted => UI reset => */
 socket.on('groupDeleted', (data) => {
   const { groupId } = data;
   if (currentGroup === groupId) {
@@ -1086,7 +1008,6 @@ socket.on('groupDeleted', (data) => {
   socket.emit('set-username', username);
 });
 
-/* Socket Durum */
 socket.on("connect", () => {
   console.log("WebSocket bağlandı:", socket.id);
   if(currentGroup && currentRoom) {
@@ -1105,56 +1026,193 @@ socket.on("disconnect", () => {
 socket.io.on('reconnect_attempt', () => {
   console.log('Yeniden bağlanma deniyor...');
 });
-
 socket.io.on('reconnect_error', (err) => {
   console.error('Yeniden bağlanma hatası:', err);
 });
 
-/* Konuşma Algılama => startVolumeAnalysis, stopVolumeAnalysis */
+function showConnectionStatus(message, duration = 3000) {
+  const statusDiv = document.getElementById('connectionStatus');
+  if(!statusDiv) {
+    const newStatusDiv = document.createElement('div');
+    newStatusDiv.id = 'connectionStatus';
+    newStatusDiv.style.position = 'fixed';
+    newStatusDiv.style.bottom = '20px';
+    newStatusDiv.style.right = '20px';
+    newStatusDiv.style.background = '#2d2d2d';
+    newStatusDiv.style.color = '#fff';
+    newStatusDiv.style.padding = '10px 20px';
+    newStatusDiv.style.borderRadius = '8px';
+    newStatusDiv.style.zIndex = '999999';
+    document.body.appendChild(newStatusDiv);
+  }
+  statusDiv.textContent = message;
+  if(duration > 0) {
+    setTimeout(() => {
+      statusDiv.textContent = '';
+    }, duration);
+  }
+}
+
+function initWebRTCConnections() {
+  try {
+    if (!localStream) {
+      throw new Error('Mikrofon bağlantısı kurulamadı');
+    }
+    closeAllPeers();
+    pendingUsers.forEach(user => {
+      const peer = createPeerConnection(user.id, user.username);
+      localStream.getTracks().forEach(track => {
+        peer.addTrack(track, localStream);
+      });
+    });
+    processPendingCandidates();
+  } catch (err) {
+    console.error('WebRTC bağlantı hatası:', err);
+    alert('Ses bağlantısı kurulamadı: ' + err.message);
+  }
+}
+
+// Örnek WebRTC yöneticisi sınıfı (isteğe bağlı)
+class WebRTCManager {
+  constructor() {
+    this.peers = {};
+    this.pendingCandidates = {};
+  }
+  createPeer(userId) {
+    const peer = new RTCPeerConnection({/* config */});
+    peer.onicecandidate = ({candidate}) => {
+      if (candidate) {
+        socket.emit('signal', {to: userId, candidate});
+      }
+    };
+    peer.ontrack = (e) => this.handleRemoteTrack(e, userId);
+    this.peers[userId] = peer;
+    return peer;
+  }
+  async processSignals(userId, signal) {
+    const peer = this.peers[userId] || this.createPeer(userId);
+    try {
+      await peer.addIceCandidate(new RTCIceCandidate(signal));
+    } catch (err) {
+      console.error('ICE Candidate hatası:', err);
+    }
+  }
+}
+
+// Merkezi durum yönetimi (isteğe bağlı)
+const AppState = {
+  audio: {
+    enabled: false,
+    stream: null,
+    devices: []
+  },
+  channels: {
+    current: null,
+    list: []
+  },
+  updateAudioState() {
+    document.dispatchEvent(new CustomEvent('audiostatechange'));
+  }
+};
+
+/* =========== Metin Chat Fonksiyonları =========== */
+function enableChatUI() {
+  textChatArea.style.display = 'block';
+}
+function disableChatUI() {
+  textChatArea.style.display = 'none';
+}
+
+function displayChatMessage({ username, content, timestamp }) {
+  const msgDiv = document.createElement('div');
+  msgDiv.classList.add('chat-message');
+  const timeString = new Date(timestamp).toLocaleTimeString('tr-TR', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false // 24 saat formatı için
+  });
+  msgDiv.innerHTML = `<strong>[${timeString}] ${username}:</strong> ${content}`;
+  chatMessagesDiv.appendChild(msgDiv);
+  chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+}
+
+sendChatBtn.addEventListener('click', () => {
+  const content = chatInput.value.trim();
+  if (!content) return;
+  if (!currentRoom) {
+    alert("Bir kanalda değilsiniz!");
+    return;
+  }
+  socket.emit('textMessage', {
+    channelId: currentRoom,
+    content,
+    username
+  });
+  chatInput.value = '';
+});
+
+socket.on('textMessage', (data) => {
+  if (data.channelId === currentRoom) {
+    displayChatMessage(data);
+  }
+});
+
+socket.on('channelHistory', (data) => {
+  if (data.channelId !== currentRoom) return;
+  chatMessagesDiv.innerHTML = '';
+  data.messages.sort((a, b) => a.timestamp - b.timestamp).forEach(msg => {
+    displayChatMessage(msg);
+  });
+});
+
+/* Yeniden bağlantı yönetimi */
+socket.on('connect_error', (err) => {
+  console.error('Bağlantı hatası:', err);
+  showConnectionStatus('Bağlantı kesildi. Yeniden bağlanılıyor...');
+});
+socket.on('reconnect_attempt', (attempt) => {
+  showConnectionStatus(`Yeniden bağlanılıyor (${attempt}. deneme)...`);
+});
+socket.on('reconnect', () => {
+  showConnectionStatus('Bağlantı yenilendi!', 2000);
+  if(currentGroup && currentRoom) {
+    socket.emit('joinRoom', { groupId: currentGroup, roomId: currentRoom });
+  }
+});
+
+/* Konuşma Algılama */
 function startVolumeAnalysis() {
   try {
-    // Stream kontrolü ve yeniden deneme mekanizması
     if (!localStream || !localStream.active) {
       console.warn('Stream aktif değil, yeniden deneniyor...');
       setTimeout(() => startVolumeAnalysis(), 300);
       return;
     }
-
-    // AudioContext desteği kontrolü
     if (!window.AudioContext && !window.webkitAudioContext) {
       throw new Error('Tarayıcınız ses analizini desteklemiyor');
     }
-
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const analyser = audioContext.createAnalyser();
-    
-    // Stream track'lerini kontrol et
     const audioTracks = localStream.getAudioTracks();
     if (audioTracks.length === 0 || audioTracks.some(t => t.readyState !== 'live')) {
       throw new Error('Mikrofon bağlantısı hazır değil');
     }
-
     const microphone = audioContext.createMediaStreamSource(localStream);
     microphone.connect(analyser);
     analyser.fftSize = 512;
-
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-
     const checkVolume = () => {
       if (!micEnabled || selfDeafened || !localStream.active) return;
-      
       analyser.getByteFrequencyData(dataArray);
       let sum = dataArray.reduce((a, b) => a + b, 0);
       let avg = sum / dataArray.length;
-      
       if (avg > SPEAKING_THRESHOLD) {
         socket.emit('userSpeaking', { isSpeaking: true });
       } else {
         socket.emit('userSpeaking', { isSpeaking: false });
       }
     };
-    
     const volumeInterval = setInterval(() => {
       if (!localStream.active) {
         clearInterval(volumeInterval);
@@ -1162,10 +1220,8 @@ function startVolumeAnalysis() {
       }
       checkVolume();
     }, VOLUME_CHECK_INTERVAL);
-
   } catch (err) {
     console.error('Ses analiz hatası:', err);
-    // 2 saniye sonra yeniden dene
     setTimeout(() => startVolumeAnalysis(), 2000);
   }
 }
@@ -1177,18 +1233,13 @@ function stopVolumeAnalysis(userId) {
   }
 }
 
-/* joinRoom => Kanala giriş */
 function joinRoom(groupId, roomId, roomName) {
   const roomType = getRoomType(roomId);
-  
-  // Tüm ses bağlantılarını temizle
   closeAllPeers();
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
   }
-
-  // Kanal tipine göre işlemler
   if (roomType === 'voice') {
     document.body.classList.add('voice-channel-active');
     document.body.classList.remove('text-channel-active');
@@ -1198,8 +1249,6 @@ function joinRoom(groupId, roomId, roomName) {
     document.body.classList.remove('voice-channel-active');
     initTextChannel();
   }
-
-  // Sunucuya katılım bildirimi
   socket.emit('joinRoom', { groupId, roomId });
   currentGroup = groupId;
   currentRoom = roomId;
@@ -1211,34 +1260,25 @@ function initVoiceChannel() {
     alert('Ses özellikleri sadece HTTPS veya localhost üzerinde çalışır!');
     return;
   }
-
-  // Mikrofon erişimini başlat
   requestMicrophoneAccess().then(success => {
     if (success) {
       initWebRTCConnections();
       startVolumeAnalysis();
-      applyAudioStates(); // Mikrofon durumunu güncelle
+      applyAudioStates();
     }
   });
 }
 
 function initTextChannel() {
-  // Ses özelliklerini devre dışı bırak
   micEnabled = false;
   selfDeafened = false;
-  
-  // Aktif mikrofon iznini iptal et
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
   }
-  
-  // Arayüzü güncelle
   applyAudioStates();
   document.getElementById('textChatArea').style.display = 'block';
   document.getElementById('channelUsersContainer').style.display = 'none';
-  
-  // Sohbet geçmişini yükle
   socket.emit('getChannelHistory', currentRoom);
 }
 
@@ -1257,28 +1297,48 @@ function disableVoiceFeatures() {
 }
 
 function enableChatUI() {
-  // Metin kanalı arayüzünü aktif et
-  document.getElementById('textChatArea').style.display = 'block';
-  socket.emit('getChannelHistory', currentRoom);
+  textChatArea.style.display = 'block';
+}
+function renderUsersInMainContent(usersArray) {
+  const container = document.getElementById('channelUsersContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  container.classList.remove('layout-1-user','layout-2-users','layout-3-users','layout-4-users','layout-n-users');
+  if (usersArray.length === 1) {
+    container.classList.add('layout-1-user');
+  } else if (usersArray.length === 2) {
+    container.classList.add('layout-2-users');
+  } else if (usersArray.length === 3) {
+    container.classList.add('layout-3-users');
+  } else if (usersArray.length === 4) {
+    container.classList.add('layout-4-users');
+  } else {
+    container.classList.add('layout-n-users');
+  }
+  usersArray.forEach(u => {
+    const card = document.createElement('div');
+    card.classList.add('user-card');
+    const avatar = document.createElement('div');
+    avatar.classList.add('user-card-avatar');
+    const label = document.createElement('div');
+    label.classList.add('user-label');
+    label.textContent = u.username || '(İsimsiz)';
+    card.appendChild(avatar);
+    card.appendChild(label);
+    container.appendChild(card);
+  });
 }
 
-// Yardımcı fonksiyon: Oda tipini belirleme
-function getRoomType(roomId) {
-  const roomItem = Array.from(document.getElementsByClassName('channel-item')).find(
-    item => item.querySelector('.channel-users').id === `channel-users-${roomId}`
-  );
-  return roomItem?.querySelector('.channel-header span.material-icons') ? 'voice' : 'text';
-}
-
-/* Kanal Durum Paneli => ping + bars */
-function showChannelStatusPanel() {
-  channelStatusPanel.style.display = 'block';
-  startPingInterval();
-}
 function hideChannelStatusPanel() {
   channelStatusPanel.style.display = 'none';
   stopPingInterval();
 }
+
+function showChannelStatusPanel() {
+  channelStatusPanel.style.display = 'block';
+  startPingInterval();
+}
+
 function startPingInterval() {
   if (pingInterval) clearInterval(pingInterval);
   pingInterval = setInterval(() => {
@@ -1315,225 +1375,8 @@ function updateCellBars(ping) {
   cellBar2.classList.remove('active');
   cellBar3.classList.remove('active');
   cellBar4.classList.remove('active');
-
   if (barsActive >= 1) cellBar1.classList.add('active');
   if (barsActive >= 2) cellBar2.classList.add('active');
   if (barsActive >= 3) cellBar3.classList.add('active');
   if (barsActive >= 4) cellBar4.classList.add('active');
 }
-
-/* Kullanıcı Kartları => 1,2,3,4,5+ layout */
-function renderUsersInMainContent(usersArray) {
-  const container = document.getElementById('channelUsersContainer');
-  if (!container) return;
-
-  container.innerHTML = '';
-  container.classList.remove(
-    'layout-1-user','layout-2-users','layout-3-users','layout-4-users','layout-n-users'
-  );
-
-  if (usersArray.length === 1) {
-    container.classList.add('layout-1-user');
-  } else if (usersArray.length === 2) {
-    container.classList.add('layout-2-users');
-  } else if (usersArray.length === 3) {
-    container.classList.add('layout-3-users');
-  } else if (usersArray.length === 4) {
-    container.classList.add('layout-4-users');
-  } else {
-    container.classList.add('layout-n-users');
-  }
-
-  usersArray.forEach(u => {
-    const card = document.createElement('div');
-    card.classList.add('user-card');
-
-    const avatar = document.createElement('div');
-    avatar.classList.add('user-card-avatar');
-
-    const label = document.createElement('div');
-    label.classList.add('user-label');
-    label.textContent = u.username || '(İsimsiz)';
-
-    card.appendChild(avatar);
-    card.appendChild(label);
-    container.appendChild(card);
-  });
-}
-
-/* =========== Metin Chat Fonksiyonları =========== */
-function enableChatUI() {
-  textChatArea.style.display = 'block';
-}
-function disableChatUI() {
-  textChatArea.style.display = 'none';
-}
-
-// Mesajları ekrana basan helper
-function displayChatMessage({ username, content, timestamp }) {
-  const msgDiv = document.createElement('div');
-  msgDiv.classList.add('chat-message');
-  const timeString = new Date(timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  msgDiv.innerHTML = `<strong>[${timeString}] ${username}:</strong> ${content}`;
-  chatMessagesDiv.appendChild(msgDiv);
-  chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
-}
-
-// Mesaj gönder butonu
-sendChatBtn.addEventListener('click', () => {
-  const content = chatInput.value.trim();
-  if (!content) return;
-  if (!currentRoom) {
-    alert("Bir kanalda değilsiniz!");
-    return;
-  }
-  socket.emit('textMessage', {
-    channelId: currentRoom,
-    content
-  });
-  chatInput.value = '';
-});
-
-// Sunucudan gelen yeni mesaj
-socket.on('textMessage', (data) => {
-  // Sadece aktif oda (currentRoom) eşleşiyorsa göster
-  if (data.channelId === currentRoom) {
-    displayChatMessage(data);
-  }
-});
-
-// Kanal geçmişi
-socket.on('channelHistory', (data) => {
-  if (data.channelId !== currentRoom) return;
-  chatMessagesDiv.innerHTML = '';
-  data.messages.forEach(msg => {
-    displayChatMessage(msg);
-  });
-});
-
-// Yeniden bağlantı yönetimi
-socket.on('connect_error', (err) => {
-  console.error('Bağlantı hatası:', err);
-  showConnectionStatus('Bağlantı kesildi. Yeniden bağlanılıyor...');
-});
-
-socket.on('reconnect_attempt', (attempt) => {
-  showConnectionStatus(`Yeniden bağlanılıyor (${attempt}. deneme)...`);
-});
-
-socket.on('reconnect', () => {
-  showConnectionStatus('Bağlantı yenilendi!', 2000);
-  if(currentGroup && currentRoom) {
-    socket.emit('joinRoom', { groupId: currentGroup, roomId: currentRoom });
-  }
-});
-
-function showConnectionStatus(message, duration = 3000) {
-  const statusDiv = document.getElementById('connectionStatus');
-  if(!statusDiv) {
-    const newStatusDiv = document.createElement('div');
-    newStatusDiv.id = 'connectionStatus';
-    newStatusDiv.style.position = 'fixed';
-    newStatusDiv.style.bottom = '20px';
-    newStatusDiv.style.right = '20px';
-    newStatusDiv.style.background = '#2d2d2d';
-    newStatusDiv.style.color = '#fff';
-    newStatusDiv.style.padding = '10px 20px';
-    newStatusDiv.style.borderRadius = '8px';
-    newStatusDiv.style.zIndex = '999999';
-    document.body.appendChild(newStatusDiv);
-  }
-  statusDiv.textContent = message;
-  if(duration > 0) {
-    setTimeout(() => {
-      statusDiv.textContent = '';
-    }, duration);
-  }
-}
-
-function initWebRTCConnections() {
-  try {
-    if (!localStream) {
-      throw new Error('Mikrofon bağlantısı kurulamadı');
-    }
-
-    // Mevcut bağlantıları temizle
-    closeAllPeers();
-
-    // Yeni bağlantıları oluştur
-    pendingUsers.forEach(user => {
-      const peer = createPeerConnection(user.id, user.username);
-      
-      // Mikrofon track'lerini ekle
-      localStream.getTracks().forEach(track => {
-        peer.addTrack(track, localStream);
-      });
-    });
-
-    // Bekleyen ICE Candidate'leri işle
-    processPendingCandidates();
-
-  } catch (err) {
-    console.error('WebRTC bağlantı hatası:', err);
-    alert('Ses bağlantısı kurulamadı: ' + err.message);
-  }
-}
-
-// Sunucu tarafı mesaj kontrolü (server.js)
-socket.on('textMessage', async ({ channelId, content }) => {
-  const channel = await Channel.findOne({ channelId }).populate('group');
-  if (!channel || channel.type !== 'text') {
-    socket.emit('errorMessage', 'Sadece metin kanallarında mesaj gönderebilirsiniz!');
-    return;
-  }
-  // Mesaj işleme devamı...
-});
-
-// WebRTC bağlantı yönetimi için sınıf
-class WebRTCManager {
-  constructor() {
-    this.peers = {};
-    this.pendingCandidates = {};
-  }
-
-  createPeer(userId) {
-    const peer = new RTCPeerConnection({/* config */});
-    // ICE Candidate yönetimi
-    peer.onicecandidate = ({candidate}) => {
-      if (candidate) {
-        socket.emit('signal', {to: userId, candidate});
-      }
-    };
-    
-    // Stream yönetimi
-    peer.ontrack = (e) => this.handleRemoteTrack(e, userId);
-    
-    this.peers[userId] = peer;
-    return peer;
-  }
-
-  async processSignals(userId, signal) {
-    const peer = this.peers[userId] || this.createPeer(userId);
-    try {
-      await peer.addIceCandidate(new RTCIceCandidate(signal));
-    } catch (err) {
-      console.error('ICE Candidate hatası:', err);
-    }
-  }
-}
-
-// Merkezi durum yönetimi
-const AppState = {
-  audio: {
-    enabled: false,
-    stream: null,
-    devices: []
-  },
-  channels: {
-    current: null,
-    list: []
-  },
-  updateAudioState() {
-    document.dispatchEvent(new CustomEvent('audiostatechange'));
-  }
-};
